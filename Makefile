@@ -17,10 +17,10 @@
 ###### edit the bottom section as well.
 
 # What's the executable called?
-PROJ = csim
+PROJ = sim
 
 # What C files must we compile?
-SRC ?= csim.c dynamics.c
+SRC ?= sim.c dynamics.c
 
 # What directories must we include?
 INCLUDES ?= -I./mathlib/
@@ -31,21 +31,29 @@ LIBS ?= mathlib/libmathlib.a -lgsl -lblas -latlas -lm
 ###### Shouldn't have to configure this section ######
 
 C_SRC = $(filter %.c,$(SRC))
-H_SRC = $(filter %.h,$(SRC))
 CXX_SRC = $(filter %.cc,$(SRC))
-
 
 ASMNAME ?= lst
 
 # Default setting for object files is just .c -> .o
-ASM ?= $(SRC:%.c=%.$(ASMNAME))
-OBJ ?= $(SRC:%.c=%.o)
+C_ASM ?= $(C_SRC:%.c=%.$(ASMNAME))
+C_OBJ ?= $(C_SRC:%.c=%.o)
+C_DEPS ?= $(C_SRC:%.c=%.d)
+
+CXX_ASM ?= $(CXX_SRC:%.c=%.$(ASMNAME))
+CXX_OBJ ?= $(CXX_SRC:%.c=%.o)
+CXX_DEPS ?= $(CXX_SRC:%.c=%.d)
+
+ASM ?= $(C_ASM) $(CXX_ASM)
+OBJ ?= $(C_OBJ) $(CXX_OBJ)
+DEPS ?= $(C_DEPS) $(CXX_DEPS)
 
 # Here we remove all paths from the given object and source file
 # names; you can echo these in commands and get slightly tidier output.
 SRC_SHORT = $(notdir $(SRC))
 ASM_SHORT = $(notdir $(ASM))
 OBJ_SHORT = $(notdir $(OBJ))
+DEPS_SHORT = $(notdir $(DEPS))
 
 # GCC by default (easy to override from outside the makefile)
 CC ?= gcc 
@@ -102,7 +110,7 @@ CXXWARNFLAGS ?= -Wall -Weffc++ -std=gnu++11 -pedantic  \
 
 # Include debug symbols; trap on signed integer overflows; install
 # mudflaps for runtime checks on arrays (including malloced ones)
-DBGFLAGS ?= -g -ftrapv # -fmudflap 
+DBGFLAGS ?= -g -ftrapv -MD # -fmudflap 
 
 # Build position-independent executables; fortify with array checks;
 # protect stack
@@ -140,10 +148,10 @@ $(PROJ): $(OBJ)
 
 # Remove executable, object and assembly files
 clean:
-	@echo CLEAN $(PROJ) $(OBJ_SHORT:%.o=%)
-	$(Q)rm -f $(PROJ) $(OBJ) $(ASM)
+	@echo CLEAN $(PROJ) $(OBJ_SHORT) $(DEPS_SHORT)
+	$(Q)rm -f $(PROJ) $(OBJ) $(ASM) $(DEPS)
 
-.PHONY: check-syntax-c check-syntax-cc check-syntax
+.PHONY: check-syntax-c check-syntax-cc check-syntax 
 
 check-syntax: check-syntax-c check-syntax-cc
 
