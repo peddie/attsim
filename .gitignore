@@ -1,0 +1,6 @@
+*.pdf
+*.lst
+*.o
+*.a
+*.log
+csim
