@@ -19,7 +19,7 @@ const double I_b[9] = {1, 0, 0,
                        0, 0, 1};
 double I_b_inv[9];
 
-/* State: (q0 q1 q2 q3 Lx Ly Lz W) */
+/* State: (q_i2b L_bi_i W P) */
 
 static inline void matrix_multiply(size_t n, size_t m, size_t p,
                                    const double *a, const double *b,
@@ -61,43 +61,51 @@ static int
 attitude(double t __attribute__((unused)),
          const double y[], double f[], void *params __attribute__((unused)))
 {
-  /* Normalize attitude quat q_b2i */
-  quat_t q;
-  quat_memcpy(&q, (quat_t *) y);
-  quat_normalize(&q);
+  /* Normalize attitude quat q_i2b */
+  quat_t q_i2b;
+  quat_memcpy(&q_i2b, (quat_t *) y);
+  quat_normalize(&q_i2b);
 
   double I_i_inv[9];
   double dcm_b2i[9];
-  dcm_of_quat_a2b(dcm_b2i, &q);
+  dcm_of_quat_b2a(dcm_b2i, &q_i2b);
 
   /* compute torques */
-  const xyz_t torque_b = {0.5, 0, 0};
-  xyz_t torque_i = {0, 0, 0};
+  const xyz_t torque_b = {0, 0, 0.5};
+  xyz_t torque_i = {0.5, 0, 0};
   xyz_t body_torques_tmp;
 
   /* Convert body torques into inertial frame */
-  rot_vec_by_quat_a2b(&body_torques_tmp, &q, &torque_b);
-/*   matrix_multiply(3, 3, 1, dcm_b2i, (double *) &torque_b, */
-/*                   (double *) &body_torques_tmp); */
+  rot_vec_by_quat_b2a(&body_torques_tmp, &q_i2b, &torque_b);
+  fprintf(stderr, "T_bi_b (body subset): (%lf %lf %lf)\n",
+          torque_b.x, torque_b.y, torque_b.z);
+  fprintf(stderr, "T_bi_i (inertial subset): (%lf %lf %lf)\n",
+          torque_i.x, torque_i.y, torque_i.z);
+  /* dot(L_bi_i) = torque_i */
   xyz_sum((xyz_t *) &f[4], &body_torques_tmp, &torque_i);
 
   /* Rotate body-frame inertia tensor into inertial frame. */
   matrix_multiply(3, 3, 3, dcm_b2i, I_b_inv, I_i_inv);
   
   /* Compute current angular velocity */
-  xyz_t w_i, w;
-  matrix_multiply(3, 3, 1, I_i_inv, &y[4], (double *) &w_i);
-  rot_vec_by_quat_b2a(&w, &q, &w_i);
+  xyz_t w_bi_i, w;                      /* w = w_bi_b */
+  matrix_multiply(3, 3, 1, I_i_inv, &y[4], (double *) &w_bi_i); /* y[4] = L_bi_i */
+  rot_vec_by_quat_a2b(&w, &q_i2b, &w_bi_i);
 
   /* Compute differential attitude quaternion */
-  f[0] = 0.5*(              - (w.x)*(q.q1) - (w.y)*(q.q2) - (w.z)*(q.q3)  );
-  f[1] = 0.5*(  (w.x)*(q.q0)               + (w.z)*(q.q2) - (w.y)*(q.q3)  );
-  f[2] = 0.5*(  (w.y)*(q.q0) - (w.z)*(q.q1)               + (w.x)*(q.q3)  );
-  f[3] = 0.5*(  (w.z)*(q.q0) + (w.y)*(q.q1)   - (w.x)*(q.q2)              );
+  f[0] = 0.5*(            - (w.x)*(q_i2b.q1) - (w.y)*(q_i2b.q2) - (w.z)*(q_i2b.q3));
+  f[1] = 0.5*((w.x)*(q_i2b.q0)               + (w.z)*(q_i2b.q2) - (w.y)*(q_i2b.q3));
+  f[2] = 0.5*((w.y)*(q_i2b.q0) - (w.z)*(q_i2b.q1)               + (w.x)*(q_i2b.q3));
+  f[3] = 0.5*((w.z)*(q_i2b.q0) + (w.y)*(q_i2b.q1)   - (w.x)*(q_i2b.q2)            );
 
   /* Compute power and rotational impulse to track work and
    * momentum as a check on the solver */
-  f[7] = xyz_dot(&w_i, (xyz_t *) &f[4]);
+  fprintf(stderr, "\t\tw_bi_i: (%lf %lf %lf)\n\t\tw_bi_b: (%lf %lf %lf)\n"
+          "\t\tT_bi_i: (%lf %lf %lf)\n",
+          w_bi_i.x, w_bi_i.y, w_bi_i.z,
+          w.x, w.y, w.z,
+          f[4], f[5], f[6]);
+  f[7] = xyz_dot(&w, (xyz_t *) &f[4]);
   f[8] = xyz_norm((xyz_t *) &f[4]);
   
   return GSL_SUCCESS;
@@ -112,28 +120,29 @@ main (void)
   inv3(I_b, I_b_inv);
 
   /* Initial conditions */
-  quat_t q0 = {1, 0, 0, 0};
-  xyz_t w0 = {0, 1, 0};
+  quat_t q_i2b_0 = {1, 0, 1, 0};
+  xyz_t w_bi_b_0 = {0, 1, 0};
 
-  quat_normalize(&q0);
+  quat_normalize(&q_i2b_0);
 
   double ke0;
   double I_tmp[3];
-  matrix_multiply(1, 3, 3, (double *) &w0, I_b, I_tmp);
-  matrix_multiply(1, 3, 1, I_tmp, (double *)&w0, &ke0);
+  matrix_multiply(1, 3, 3, (double *) &w_bi_b_0, I_b, I_tmp);
+  matrix_multiply(1, 3, 1, I_tmp, (double *)&w_bi_b_0, &ke0);
   ke0 /= 2;
   
-  xyz_t L0;
-  xyz_t w_i;
+  xyz_t L_bi_i_0;
+  xyz_t w_bi_i_0;
   double I_i[9], I_i_inv[9], dcm_b2i[9];
-  dcm_of_quat_b2a(dcm_b2i, &q0);
-  xyz_mult_3x3_by_xyz(&w_i, dcm_b2i, &w0);
+  dcm_of_quat_b2a(dcm_b2i, &q_i2b_0);
+  /* xyz_mult_3x3_by_xyz(&w_bi_i_0, dcm_b2i, &w_bi_b_0); */
+  rot_vec_by_quat_b2a(&w_bi_i_0, &q_i2b_0, &w_bi_b_0);
   /* Rotate body-frame inertia tensor into inertial frame. */
   matrix_multiply(3, 3, 3, dcm_b2i, I_b, I_i);
-  xyz_mult_3x3_by_xyz(&L0, I_i, &w_i);
+  xyz_mult_3x3_by_xyz(&L_bi_i_0, I_i, &w_bi_i_0);
 
   /* Integration parameters */
-  double h = 1e-3, t = 0.0, t1 = 10;
+  double h = 1e-6, t = 0.0, t1 = 10;
 
   /* GSL setup */
   const gsl_odeiv2_step_type * T
@@ -150,9 +159,9 @@ main (void)
 
   gsl_odeiv2_system sys = {attitude, NULL, SYS_SIZE, NULL};
 
-  double y[SYS_SIZE] = {q0.q0, q0.q1, q0.q2, q0.q3,
-                        L0.x, L0.y, L0.z,
-                        ke0, xyz_norm(&L0)};
+  double y[SYS_SIZE] = {q_i2b_0.q0, q_i2b_0.q1, q_i2b_0.q2, q_i2b_0.q3,
+                        L_bi_i_0.x, L_bi_i_0.y, L_bi_i_0.z,
+                        ke0, xyz_norm(&L_bi_i_0)};
 
   /* Step using GSL integrator */
   while (t < t1) {
@@ -165,13 +174,14 @@ main (void)
     for (i = 0; i < 4; i++) printf("%.5e ", y[i]);
     printf("\t");
 
-    xyz_t w;
-    dcm_of_quat_a2b(dcm_b2i, (quat_t *) y);
+    xyz_t w_bi_i, w_bi_b;
+    dcm_of_quat_b2a(dcm_b2i, (quat_t *) y);
       
     matrix_multiply(3, 3, 3, dcm_b2i, I_b_inv, I_i_inv);
-    matrix_multiply(3, 3, 1, I_i_inv, &y[4], (double *) &w);
+    matrix_multiply(3, 3, 1, I_i_inv, &y[4], (double *) &w_bi_i);
+    rot_vec_by_quat_a2b(&w_bi_b, (quat_t *) y, &w_bi_i);
 
-    printf("%.5e %.5e %.5e\t", w.x, w.y, w.z);
+    printf("%.5e %.5e %.5e\t", w_bi_b.x, w_bi_b.y, w_bi_b.z);
 
     euler_t eulers;
     euler321_of_quat(&eulers, (quat_t *) y);
@@ -184,8 +194,8 @@ main (void)
 
     /* Check work and energy */
     double ke;
-    matrix_multiply(1, 3, 3, (double *) &w, I_b, I_tmp);
-    matrix_multiply(1, 3, 1, I_tmp, (double *)&w, &ke);
+    matrix_multiply(1, 3, 3, (double *) &w_bi_b, I_b, I_tmp);
+    matrix_multiply(1, 3, 1, I_tmp, (double *) &w_bi_b, &ke);
     ke /= 2;
 
     printf("%.5e %.5e %.5e\t", y[7], ke, y[7] - ke);
