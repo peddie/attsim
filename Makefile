@@ -20,7 +20,7 @@
 PROJ = csim
 
 # What C files must we compile?
-SRC ?= csim.c
+SRC ?= csim.c dynamics.c
 
 # What directories must we include?
 INCLUDES ?= -I./mathlib/

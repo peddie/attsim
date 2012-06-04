@@ -59,11 +59,7 @@ set xlabel "Time (s)" font "Gill Sans,9"
 
 plot "sim.log" u 1:6 w lines t "w_x", \
      "sim.log" u 1:7 w lines t "w_y", \
-     "sim.log" u 1:8 w lines t "w_z", \
-     "sim.log" u 1:17 w lines t "L_x", \
-     "sim.log" u 1:18 w lines t "L_y", \
-     "sim.log" u 1:19 w lines t "L_z"
-     
+     "sim.log" u 1:8 w lines t "w_z"
 
 set output "euler.pdf"
 
@@ -77,21 +73,28 @@ plot "sim.log" u 1:9 w lines t  "roll", \
 
 set output "work.pdf"
 
-set title "Kinetic energy" font "Gill Sans,9"
+set title "Kinetic energy vs. time" font "Gill Sans,9"
 set ylabel "Energy (J)" font "Gill Sans,9"
 set xlabel "Time (s)" font "Gill Sans,9"
 
 plot "sim.log" u 1:12 w lines t "exogenous torque", \
      "sim.log" u 1:13 w lines t "total energy", \
-     "sim.log" u 1:14 w lines t "Energy conservation error", \
+     "sim.log" u 1:14 w lines t "Energy conservation error"
+    
+set output "momentum.pdf"
+
+set title "Angular momentum vs. time" font "Gill Sans,9"
+set ylabel "Angular momentum (Nms)" font "Gill Sans,9"
+set xlabel "Time (s)" font "Gill Sans,9"
+ 
+plot "sim.log" u 1:17 w lines t "L_x", \
+     "sim.log" u 1:18 w lines t "L_y", \
+     "sim.log" u 1:19 w lines t "L_z", \
      "sim.log" u 1:15 w lines t "Norm of angular momentum vector", \
      "sim.log" u 1:16 w lines t "Numerically integrated angular impulse"
-     
 
-## Cross-plot to find problems with upload bandwidth cap
 
 # set multiplot
 # set size 1,0.45
 # set origin 0,0.5
-# plot "data-sort-upload.log" u 3:4 w lines t "Upload bandwidth"
 # unset multiplot
