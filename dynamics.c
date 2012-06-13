@@ -132,6 +132,14 @@ attitude(double t __attribute__((unused)), const double y[],
   f[2] = 0.5*((w.y)*(q.q0) - (w.z)*(q.q1)               + (w.x)*(q.q3));
   f[3] = 0.5*((w.z)*(q.q0) + (w.y)*(q.q1)   - (w.x)*(q.q2)            );
 
+  /* Compute a correction quaternion from the GSL state and the
+   * quaternion we re-normalized; use it to make corrections to the
+   * GSL state updates. */
+  f[0] += q.q0 - y[0];
+  f[1] += q.q1 - y[1];
+  f[2] += q.q2 - y[2];
+  f[3] += q.q3 - y[3];
+
   /* Compute power and rotational impulse to track work and
    * momentum as a check on the solver */
   f[7] = xyz_dot(&w, &m_total);
