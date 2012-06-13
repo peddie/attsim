@@ -14,7 +14,10 @@ linear algebra
 
 Install GNUPlot to generate nice PDF plots
 
-                gnuplot-x11
+                sudo apt-get install gnuplot-x11
+
+Might need these too:
+                sudo apt-get install libatlas-base-dev libatlas-dev libblas-dev
 
 Clone this repository
 

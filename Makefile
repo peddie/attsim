@@ -78,7 +78,7 @@ OPTFLAGS ?= -Os -march=native -msse4.1 -ftree-vectorize -flto
 
 # We prefer C99 with GNU extensions
 WARNFLAGS ?= -Wall -Wextra -std=gnu99 -pedantic-errors \
-             -Wshadow -Wswitch-default -Wswitch-enum -Wundef \
+             -Wswitch-default -Wswitch-enum -Wundef \
              -Wuninitialized -Wpointer-arith -Wstrict-prototypes \
              -Wmissing-prototypes -Wcast-align -Wformat=2 \
              -Wimplicit-function-declaration -Wredundant-decls \
