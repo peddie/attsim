@@ -16,7 +16,6 @@
 #include "dynamics.h"
 
 #define NUM_TOL 1e-9
-#define SYS_SIZE 9
 
 static void
 print_gnuplot_log(const double t, const double y[],
