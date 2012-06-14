@@ -16,8 +16,14 @@ Install GNUPlot to generate nice PDF plots
 
                 sudo apt-get install gnuplot-x11
 
-Might need these too:
-                sudo apt-get install libatlas-base-dev libatlas-dev libblas-dev
+OSX-specific
+                
+                Install standard OSX buildtools if necessary: https://github.com/kennethreitz/osx-gcc-installer/blob/master/README.rst
+                Download and install a newer gcc from http://hpc.sourceforge.net/
+                export CC=/usr/local/bin/gcc
+                Download GSL source: ftp://ftp.gnu.org/gnu/gsl/ and ./configure, make, sudo make install
+                sudo port install gnuplot
+
 
 Clone this repository
 
@@ -31,8 +37,8 @@ Clone and build Greg Horn's mathlib library for spatial rotations
 
 Build the simulator
 
-                make
-
+                Linux: make
+                OSX: make -f Makefile.mac 
 Run
 -----------
 
