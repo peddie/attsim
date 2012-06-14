@@ -3,5 +3,6 @@
 *.o
 *.a
 *.log
-csim
+sim
 *.d
+mathlib/
