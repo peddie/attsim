@@ -16,7 +16,8 @@
 #include "dynamics.h"
 
 #define NUM_TOL 1e-9
-#define SYS_SIZE 9
+
+#define PERIODIC_POINTS_PER_SECOND 10
 
 static void
 print_gnuplot_log(const double t, const double y[],
@@ -52,6 +53,102 @@ print_gnuplot_log(const double t, const double y[],
   fprintf(out, "\n");
 }
 
+static int
+integrate_periodic_output(double tmax, dynamics_params *dp, FILE *simlog,
+                          gsl_odeiv2_system *sys, double reltol, double abstol,
+                          const gsl_odeiv2_step_type *step, double y[SYS_SIZE])
+{
+  int i;
+  double qerr = 1.0;
+  double t = 0.0;
+  gsl_odeiv2_driver *d
+      = gsl_odeiv2_driver_alloc_standard_new(sys, step, 1e-6,
+                                             abstol, reltol, 1, 1);
+  if (!d) {
+    fprintf(stderr, __FILE__ ":%d: Error in GSL initialization!\n", __LINE__);
+    return 1;
+  }
+
+  fprintf(stderr, "SIM:  Using periodic output driver due to long simulation\n"
+          "      time.  Configure the output time resolution with\n"
+          "      PERIODIC_POINTS_PER_SECOND (currently %d).\n",
+          PERIODIC_POINTS_PER_SECOND);
+
+  /* Step using GSL integrator */
+  for (i = 1; i <= tmax * PERIODIC_POINTS_PER_SECOND; i++) {
+    double ti = (double) i / PERIODIC_POINTS_PER_SECOND;
+    int status = gsl_odeiv2_driver_apply (d, &t, ti, y);
+     
+    if (status != GSL_SUCCESS) {
+      fprintf(stderr, "SIM:  GSL integration error"
+              ", return value = %d\n", status);
+      break;
+    }
+
+    /* Check quaternion norm */
+    double qnorm = y[0]*y[0] + y[1]*y[1] + y[2]*y[2] + y[3]*y[3];
+    if ((fabs(qnorm - 1) > 1e-5) && (fabs(qnorm - qerr) > 1e-4)) {
+      fprintf(stderr, "SIM:  Warning: Quaternion norm differs from 1: %lf\n",
+              qnorm);
+      qerr = qnorm;
+    }
+
+    /* output to log file */
+    print_gnuplot_log(t, y, dp, simlog);
+  }
+     
+  gsl_odeiv2_driver_free(d);
+  return 0;
+}
+
+static int
+integrate_solver_output(double tmax, dynamics_params *dp, FILE *simlog,
+                        gsl_odeiv2_system *sys, double abstol, double reltol,
+                        const gsl_odeiv2_step_type *step, double y[SYS_SIZE])
+{
+  int status;
+  double t = 0.0;
+  double h = 1e-6;
+  double qerr = 1.0;
+  gsl_odeiv2_step * s = gsl_odeiv2_step_alloc(step, SYS_SIZE);
+  gsl_odeiv2_control * c =
+      gsl_odeiv2_control_standard_new(abstol, reltol, 1, 1);
+  gsl_odeiv2_evolve * e = gsl_odeiv2_evolve_alloc(SYS_SIZE);
+
+  if (!s || !c || !e) {
+    fprintf(stderr, __FILE__ ":%d: Error in GSL initialization!\n", __LINE__);
+    return 1;
+  }
+
+  fprintf(stderr, "SIM:  Using direct solver output driver due to short "
+          "simulation time.\n");
+
+  /* Step using GSL integrator */
+  while (t < tmax) {
+    if ((status = gsl_odeiv2_evolve_apply(e, c, s, sys, &t, tmax, &h, y))
+        != GSL_SUCCESS)
+      break;
+
+    /* Check quaternion norm */
+    double qnorm = y[0]*y[0] + y[1]*y[1] + y[2]*y[2] + y[3]*y[3];
+    if ((fabs(qnorm - 1) > 1e-6) && (fabs(qnorm - qerr) > 1e-4)) {
+      fprintf(stderr, "SIM:  Warning: Quaternion norm differs from 1: %lf\n",
+              qnorm);
+      qerr = qnorm;
+    }
+    
+    /* output to log file */
+    print_gnuplot_log(t, y, dp, simlog);
+  }
+
+  /* GSL cleanup */
+  gsl_odeiv2_evolve_free(e);
+  gsl_odeiv2_control_free(c);
+  gsl_odeiv2_step_free(s);
+
+  return 0;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -60,7 +157,7 @@ main(int argc, char **argv)
   dynamics_params dp;
 
   /* Integration parameters */
-  double h = 1e-6, t = 0.0, t1 = 10;
+  double tmax = 10;
   double tolabs = 1e-10, tolrel = 1e-10;
 
   const char *logfilename = "sim.log";
@@ -68,7 +165,7 @@ main(int argc, char **argv)
   FILE *simlog = fopen(logfilename, "w");
   
   if (argc > 1)
-    t1 = atof(argv[1]);
+    tmax = atof(argv[1]);
 
   /* set up dynamics */
   if ((status = dynamics_init(y, &dp)) < 0) {
@@ -78,21 +175,11 @@ main(int argc, char **argv)
   }
 
   /* GSL setup */
+  /* I tried msadams, but it's around 8 times slower. */
   const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rk8pd;
-     
-  gsl_odeiv2_step * s = gsl_odeiv2_step_alloc(T, SYS_SIZE);
-  gsl_odeiv2_control * c =
-      gsl_odeiv2_control_standard_new(tolabs, tolrel, 1, 1);
-  gsl_odeiv2_evolve * e = gsl_odeiv2_evolve_alloc(SYS_SIZE);
-
-  if (!s || !c || !e) {
-    fprintf(stderr, __FILE__ ":%d: Error in GSL initialization!\n", __LINE__);
-    return 1;
-  }
-
   gsl_odeiv2_system sys = {attitude, NULL, SYS_SIZE, &dp};
 
-  printf("SIM:  Simulating attitude dynamics for %3.3lf seconds.\n", t1);
+  printf("SIM:  Simulating attitude dynamics for %3.3lf seconds.\n", tmax);
   printf("SIM:  Using (absolute, relative) tolerance of (%2.1e, %2.1e)\n",
          tolabs, tolrel);
   printf("SIM:  Initial state is as follows:\n"
@@ -102,37 +189,21 @@ main(int argc, char **argv)
          "\t\tkinetic energy: %lf\n",
          y[0], y[1], y[2], y[3], y[4], y[5], y[6], y[7], y[8]);
 
-  double time;
+  double runtime;
   clock_t before = clock();
 
-  /* Step using GSL integrator */
-  while (t < t1) {
-    if ((status = gsl_odeiv2_evolve_apply(e, c, s, &sys, &t, t1, &h, y))
-        != GSL_SUCCESS)
-      break;
+  if (tmax > 10)
+    integrate_periodic_output(tmax, &dp, simlog, &sys, tolabs, tolrel, T, y);
+  else
+    integrate_solver_output(tmax, &dp, simlog, &sys, tolabs, tolrel, T, y);
 
-    /* Check quaternion norm */
-    double qnorm = y[0]*y[0] + y[1]*y[1] + y[2]*y[2] + y[3]*y[3];
-    if (fabs(qnorm - 1) > 1e-5)
-      fprintf(stderr, "SIM:  Warning: Quaternion norm differs from 1: %lf\n",
-              qnorm);
+  runtime = (double) clock() - (double) before;
+  runtime /= CLOCKS_PER_SEC;
 
-    /* output to stdout for now */
-    print_gnuplot_log(t, y, &dp, simlog);
-  }
-
-  time = (double) clock() - (double) before;
-  time /= CLOCKS_PER_SEC;
-
-  printf("SIM:  Completed %3.3lf seconds of simulation.\n", t);
+  printf("SIM:  Completed %3.3lf seconds of simulation.\n", tmax);
   printf("SIM:  Simulation took %3.3lf seconds (%3.2lf times realtime).\n",
-         time, t / time);
+         runtime, tmax / runtime);
   printf("SIM:  State output was written to file ``%s''.\n", logfilename);
-
-  /* GSL cleanup */
-  gsl_odeiv2_evolve_free(e);
-  gsl_odeiv2_control_free(c);
-  gsl_odeiv2_step_free(s);
 
   fclose(simlog);
   printf("SIM:  Goodbye.\n");

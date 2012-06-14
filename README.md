@@ -10,7 +10,7 @@ Installation
 Install the GNU Scientific Library and the BLAS and ATLAS packages for
 linear algebra
 
-                sudo apt-get install libgsl0-dev libatlas3gf-base libblas3gf 
+                sudo apt-get install libgsl0-dev libatlas3gf-base libblas3gf libatlas-dev libblas-dev libatlas-base-dev
 
 Install GNUPlot to generate nice PDF plots
 
