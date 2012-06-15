@@ -16,9 +16,6 @@ Install GNUPlot to generate nice PDF plots
 
                 sudo apt-get install gnuplot-x11
 
-Might need these too:
-                sudo apt-get install libatlas-base-dev libatlas-dev libblas-dev
-
 Clone this repository
 
                 git clone git://github.com/peddie/attsim.git
