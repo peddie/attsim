@@ -117,10 +117,10 @@ DBGFLAGS ?= -g -ftrapv -MD # -fmudflap
 SECFLAGS ?= -fPIE -D_FORTIFY_SOURCE=2 -fstack-protector
 
 # Run the link-time optimizer
-LDOPTFLAGS ?= -flto -Wl,--gc-sections
+LDOPTFLAGS ?= -Wl,--gc-sections -flto
 LDWARNFLAGS ?=
 # Use the mudflaps library for runtime checks
-LDDBGFLAGS ?= # -lmudflap 
+LDDBGFLAGS ?= -g # -lmudflap 
 # Link as a position-independent executable; mark ELF sections
 # read-only where applicable; resolve all dynamic symbols at initial
 # load of program and (in combination with relro) mark PLT read-only
