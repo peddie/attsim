@@ -54,12 +54,20 @@ Features
 - Simulates attitude dynamics of a body subjected to arbitrary
   body-frame or inertial-frame torques.
 
-- Fast
+- Currently allows for feedback control via measurement gyros and
+  magnetometer and using magnetic torquers
+
+- Fast (approximately 7000-10000 times realtime)
 
 Bugs
 -----------
 
-Please let us know!
+- Not sure yet whether it does torque-free precession correctly.
+
+- Not sure yet whether the bdot control is reasonable (just made some
+  stuff up).
+
+If you find anything please let us know!
 
 Coming Soon
 -----------

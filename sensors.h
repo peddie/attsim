@@ -1,5 +1,5 @@
 /***********************************************************/
-/* dynamics.h                                              */
+/* sensors.h                                               */
 /* Copyright (C) 2012 Matthew Peddie <peddie@alum.mit.edu> */
 /* Attitude dynamics sensors                               */
 /***********************************************************/

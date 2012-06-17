@@ -12,7 +12,7 @@ static controller_state st;
 static const controller_params p = {
   .bdot = {
     .diff_tau = 5,
-    .kp = 1
+    .kp = 10
   }
 };
 

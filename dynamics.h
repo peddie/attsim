@@ -14,7 +14,7 @@
 #ifndef __ATTSIM_DYNAMICS_H__
 #define __ATTSIM_DYNAMICS_H__
 
-#define NUM_TOL 1e-9
+#define NUM_TOL 1e-12
 #define SYS_SIZE 9
 
 /* Callback type to compute magnetic field */
@@ -53,4 +53,4 @@ void compute_momentum(const full_state *s, const dynamics_params *dp,
 int attitude(double t, const double y[], double f[], void *params);
 int dynamics_init(double y0[SYS_SIZE], dynamics_params *dp);
 
-#endif  /* __CSIM_DYNAMICS_H__ */
+#endif  /* __ATTSIM_DYNAMICS_H__ */

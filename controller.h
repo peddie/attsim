@@ -1,8 +1,14 @@
-#ifndef __ATTSIM_CONTROLLER_H__
-#define __ATTSIM_CONTROLLER_H__
+/***********************************************************/
+/* controller.h                                            */
+/* Copyright (C) 2012 Matthew Peddie <peddie@alum.mit.edu> */
+/* attitude controller                                     */
+/***********************************************************/
 
 #include <xyz.h>
 #include <quat.h>
+
+#ifndef __ATTSIM_CONTROLLER_H__
+#define __ATTSIM_CONTROLLER_H__
 
 #include "sensors.h"
 

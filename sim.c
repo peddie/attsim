@@ -17,8 +17,6 @@
 #include "sensors.h"
 #include "controller.h"
 
-#define NUM_TOL 1e-9
-
 #define PERIODIC_POINTS_PER_SECOND 5
 
 static void
@@ -119,10 +117,6 @@ integrate_periodic_output(double tmax, dynamics_params *dp,
       fprintf(stderr, "SIM:  Error in sensor output computation; exiting.\n");
       return 1;
     }
-    
-/*     xyz_memcpy(&meas.pqr, (xyz_t *) &y[4]); */
-/*     xyz_set_all(&meas.mag_b, 0); */
-/*     meas.panel_voltage[0] = meas.panel_voltage[1] = 0; */
     
     /* Run controller */
     if ((status = run_controller(((double) i+1) / PERIODIC_POINTS_PER_SECOND,
