@@ -94,6 +94,16 @@ plot "sim.log" u 1:17 w lines t "L_x", \
      "sim.log" u 1:16 w lines t "Numerically integrated angular impulse"
 
 
+set output "magcoil.pdf"
+
+set title "Magnetic torque coil commands vs. time" font "Gill Sans,9"
+set ylabel "Coil field (mG)" font "Gill Sans,9"
+set xlabel "Time (s)" font "Gill Sans,9"
+
+plot "controller.log" u 1:2 w lines t "B_x", \
+     "controller.log" u 1:3 w lines t "B_y", \
+     "controller.log" u 1:4 w lines t "B_z"
+
 # set multiplot
 # set size 1,0.45
 # set origin 0,0.5

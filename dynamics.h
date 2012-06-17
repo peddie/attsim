@@ -4,21 +4,35 @@
 /* Attitude dynamics                                       */
 /***********************************************************/
 
+#include <stddef.h>
+
 #include <xyz.h>
 #include <quat.h>
 
-#ifndef __CSIM_DYNAMICS_H__
-#define __CSIM_DYNAMICS_H__
+#include "controller.h"
+
+#ifndef __ATTSIM_DYNAMICS_H__
+#define __ATTSIM_DYNAMICS_H__
 
 #define NUM_TOL 1e-9
 #define SYS_SIZE 9
 
+/* Callback type to compute magnetic field */
+typedef int(*mag_lvlh_f)(double, xyz_t *);
+
+typedef struct actuators {
+  xyz_t mag_coil;
+} actuators;
+
 typedef struct dynamics_params {
   double I_b[9];
   double I_b_inv[9];
+  actuators act;
+  mag_lvlh_f compute_mag;
 } dynamics_params;
 
 typedef struct full_state {
+  double t;
   quat_t q_i2b;
   xyz_t w_bi_b;
   double P, T;

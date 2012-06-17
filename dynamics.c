@@ -75,22 +75,30 @@ compute_momentum(const full_state *s, const dynamics_params *dp,
 }
 
 static int
-compute_torques(const full_state *state __attribute__((unused)),
+compute_torques(const full_state *state,
+                const dynamics_params *p,
                 xyz_t *torque_b, xyz_t *torque_i)
 {
-  torque_b->x = 0.5;
-  torque_b->y = 0.0;
-  torque_b->z = 0.0;
+  xyz_set_all(torque_b, 0);
+  xyz_set_all(torque_i, 0);
 
-  torque_i->x = 0.0;
-  torque_i->y = 0.0;
-  torque_i->z = 0.5;
+  /* Convert LVLH earth's magnetic field into body frame */
+  xyz_t mag_lvlh, mag_b;
+  p->compute_mag(state->t, &mag_lvlh);
+  rot_vec_by_quat_a2b(&mag_b, &state->q_i2b, &mag_lvlh);
+  
+  /* earth's magnetic field cross our actuated magnetic field yields
+   * the torque on the ship */
+  xyz_t mag_torque;
+  xyz_cross(&mag_torque, &mag_b, &p->act.mag_coil);
 
+  xyz_sum(torque_b, &mag_torque, torque_b);
+  
   return 0;                             /* computation went OK */
 }
 
 int
-attitude(double t __attribute__((unused)), const double y[],
+attitude(double t, const double y[],
          double f[], void *params)
 {
   int fail = 0;
@@ -109,9 +117,10 @@ attitude(double t __attribute__((unused)), const double y[],
   /* get torques, computed in different frames */
   xyz_t torque_b, torque_i;
   full_state s;
+  s.t = t;
   xyz_memcpy(&s.w_bi_b, &w);
   quat_memcpy(&s.q_i2b, &q);
-  if ((fail = compute_torques(&s, &torque_b, &torque_i)) != 0)
+  if ((fail = compute_torques(&s, p, &torque_b, &torque_i)) != 0)
     return 22;
   
   /* Convert inertial-frame torques into the body frame */
@@ -123,7 +132,7 @@ attitude(double t __attribute__((unused)), const double y[],
   xyz_t Jw, wJw, MwJw;
   xyz_mult_3x3_by_xyz(&Jw, p->I_b, &w);
   xyz_cross(&wJw, &w, &Jw);
-  xyz_subtract(&MwJw, &m_total, &wJw);
+  xyz_diff(&MwJw, &m_total, &wJw);
   xyz_mult_3x3_by_xyz((xyz_t *) &f[4], p->I_b_inv, &MwJw);
 
   /* Compute differential attitude quaternion */
@@ -135,10 +144,10 @@ attitude(double t __attribute__((unused)), const double y[],
   /* Compute a correction quaternion from the GSL state and the
    * quaternion we re-normalized; use it to make corrections to the
    * GSL state updates. */
-  f[0] += q.q0 - y[0];
-  f[1] += q.q1 - y[1];
-  f[2] += q.q2 - y[2];
-  f[3] += q.q3 - y[3];
+  f[0] += 1e-6 * (q.q0 - y[0]);
+  f[1] += 1e-6 * (q.q1 - y[1]);
+  f[2] += 1e-6 * (q.q2 - y[2]);
+  f[3] += 1e-6 * (q.q3 - y[3]);
 
   /* Compute power and rotational impulse to track work and
    * momentum as a check on the solver */
@@ -151,19 +160,33 @@ attitude(double t __attribute__((unused)), const double y[],
   return GSL_SUCCESS;
 }
 
+static int
+compute_mag_lvlh(double t __attribute__((unused)),
+                 xyz_t *mag_lvlh)
+{
+  mag_lvlh->x = 0.22;
+  mag_lvlh->y = -0.22;
+  mag_lvlh->z = -0.1;
+
+  return 0;
+}
+
 int
 dynamics_init(double y0[], dynamics_params *dp)
 {
-    /* Pre-compute inverse of body-frame inertia tensor */
+  /* magnetometer */
+  dp->compute_mag = &compute_mag_lvlh;
+  
+  /* Pre-compute inverse of body-frame inertia tensor */
   double J[9] = {1, 0, 0,
-                 0, 1, 0,
-                 0, 0, 1};
+                 0, 2, 0,
+                 0, 0, 3};
   memcpy(dp->I_b, J, sizeof(J));
   inv3(dp->I_b, dp->I_b_inv);
   
   /* Initial conditions */
   quat_t q_i2b_0 = {1, 0, 0, 0};
-  xyz_t w_bi_b_0 = {0, 1, 0};
+  xyz_t w_bi_b_0 = {0, 2, 0};
   
 
   quat_normalize(&q_i2b_0);

@@ -20,7 +20,7 @@
 PROJ = sim
 
 # What C files must we compile?
-SRC ?= sim.c dynamics.c
+SRC ?= sim.c dynamics.c controller.c sensors.c
 
 # What directories must we include?
 INCLUDES ?= -I./mathlib/

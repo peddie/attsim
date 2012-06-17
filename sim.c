@@ -14,14 +14,16 @@
 #include <spatial_rotations.h>
 
 #include "dynamics.h"
+#include "sensors.h"
+#include "controller.h"
 
 #define NUM_TOL 1e-9
 
-#define PERIODIC_POINTS_PER_SECOND 10
+#define PERIODIC_POINTS_PER_SECOND 5
 
 static void
-print_gnuplot_log(const double t, const double y[],
-                    const dynamics_params *dp, FILE *out)
+print_sim_log(const double t, const double y[],
+              const dynamics_params *dp, FILE *out)
 {
   full_state s;
   /* Emit time */
@@ -53,8 +55,19 @@ print_gnuplot_log(const double t, const double y[],
   fprintf(out, "\n");
 }
 
+static void
+print_ctrl_log(const double t, const actuators *act, FILE *out)
+{
+  fprintf(out, "%2.8lf\t", t);
+  fprintf(out, "%.8e %.8e %.8e\t",
+          act->mag_coil.x, act->mag_coil.y, act->mag_coil.z);
+
+  fprintf(out, "\n");
+}
+
 static int
-integrate_periodic_output(double tmax, dynamics_params *dp, FILE *simlog,
+integrate_periodic_output(double tmax, dynamics_params *dp,
+                          FILE *simlog, FILE *ctrllog,
                           gsl_odeiv2_system *sys, double reltol, double abstol,
                           const gsl_odeiv2_step_type *step, double y[SYS_SIZE])
 {
@@ -93,8 +106,34 @@ integrate_periodic_output(double tmax, dynamics_params *dp, FILE *simlog,
       qerr = qnorm;
     }
 
+    /* Create measurements (passthrough for now) */
+    measurements meas;
+    full_state state;
+    state.t = t;
+    quat_memcpy(&state.q_i2b, (quat_t *) y);
+    xyz_memcpy(&state.w_bi_b, (xyz_t *) &y[4]);
+    state.T = y[7];
+    state.P = y[8];
+    
+    if ((status = sensor_outputs(&state, dp, &meas)) < 0) {
+      fprintf(stderr, "SIM:  Error in sensor output computation; exiting.\n");
+      return 1;
+    }
+    
+/*     xyz_memcpy(&meas.pqr, (xyz_t *) &y[4]); */
+/*     xyz_set_all(&meas.mag_b, 0); */
+/*     meas.panel_voltage[0] = meas.panel_voltage[1] = 0; */
+    
+    /* Run controller */
+    if ((status = run_controller(((double) i+1) / PERIODIC_POINTS_PER_SECOND,
+                                 &meas, &dp->act)) < 0) {
+      fprintf(stderr, "SIM:  Error in controller computation; exiting.\n");
+      return 1;
+    }
+
     /* output to log file */
-    print_gnuplot_log(t, y, dp, simlog);
+    print_sim_log(t, y, dp, simlog);
+    print_ctrl_log(t, &dp->act, ctrllog);
   }
      
   gsl_odeiv2_driver_free(d);
@@ -102,7 +141,8 @@ integrate_periodic_output(double tmax, dynamics_params *dp, FILE *simlog,
 }
 
 static int
-integrate_solver_output(double tmax, dynamics_params *dp, FILE *simlog,
+integrate_solver_output(double tmax, dynamics_params *dp,
+                        FILE *simlog, FILE *ctrllog __attribute__((unused)),
                         gsl_odeiv2_system *sys, double abstol, double reltol,
                         const gsl_odeiv2_step_type *step, double y[SYS_SIZE])
 {
@@ -138,7 +178,7 @@ integrate_solver_output(double tmax, dynamics_params *dp, FILE *simlog,
     }
     
     /* output to log file */
-    print_gnuplot_log(t, y, dp, simlog);
+    print_sim_log(t, y, dp, simlog);
   }
 
   /* GSL cleanup */
@@ -158,11 +198,13 @@ main(int argc, char **argv)
 
   /* Integration parameters */
   double tmax = 10;
-  double tolabs = 1e-10, tolrel = 1e-10;
+  double tolabs = 1e-12, tolrel = 1e-12;
 
-  const char *logfilename = "sim.log";
+  const char *simlogfile = "sim.log";
+  const char *ctrllogfile = "controller.log";
   
-  FILE *simlog = fopen(logfilename, "w");
+  FILE *simlog = fopen(simlogfile, "w");
+  FILE *ctrllog = fopen(ctrllogfile, "w");
   
   if (argc > 1)
     tmax = atof(argv[1]);
@@ -174,6 +216,13 @@ main(int argc, char **argv)
     return 1;
   }
 
+  /* set up controller */
+  if ((status = controller_init()) < 0) {
+    fprintf(stderr, __FILE__":%d: ERROR: Couldn't initialize controller!\n",
+            __LINE__);
+    return 1;
+  }
+  
   /* GSL setup */
   /* I tried msadams, but it's around 8 times slower. */
   const gsl_odeiv2_step_type * T = gsl_odeiv2_step_rk8pd;
@@ -192,10 +241,12 @@ main(int argc, char **argv)
   double runtime;
   clock_t before = clock();
 
-  if (tmax > 10)
-    integrate_periodic_output(tmax, &dp, simlog, &sys, tolabs, tolrel, T, y);
+  if (tmax > 1)
+    integrate_periodic_output(tmax, &dp, simlog, ctrllog,
+                              &sys, tolabs, tolrel, T, y);
   else
-    integrate_solver_output(tmax, &dp, simlog, &sys, tolabs, tolrel, T, y);
+    integrate_solver_output(tmax, &dp, simlog, ctrllog,
+                            &sys, tolabs, tolrel, T, y);
 
   runtime = (double) clock() - (double) before;
   runtime /= CLOCKS_PER_SEC;
@@ -203,7 +254,7 @@ main(int argc, char **argv)
   printf("SIM:  Completed %3.3lf seconds of simulation.\n", tmax);
   printf("SIM:  Simulation took %3.3lf seconds (%3.2lf times realtime).\n",
          runtime, tmax / runtime);
-  printf("SIM:  State output was written to file ``%s''.\n", logfilename);
+  printf("SIM:  State output was written to file ``%s''.\n", simlogfile);
 
   fclose(simlog);
   printf("SIM:  Goodbye.\n");
