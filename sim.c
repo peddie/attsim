@@ -17,7 +17,8 @@
 #include "sensors.h"
 #include "controller.h"
 
-#define PERIODIC_POINTS_PER_SECOND 5
+#define CONTROLLER_HZ 100
+#define LOGS_PER_SECOND 4
 
 static void
 print_sim_log(const double t, const double y[],
@@ -64,9 +65,9 @@ print_ctrl_log(const double t, const actuators *act, FILE *out)
 }
 
 static int
-integrate_periodic_output(double tmax, dynamics_params *dp,
-                          FILE *simlog, FILE *ctrllog,
-                          gsl_odeiv2_system *sys, double reltol, double abstol,
+integrate_periodic_output(double tmax, dynamics_params *dp, FILE *simlog,
+                          FILE *ctrllog, gsl_odeiv2_system *sys,
+                          double reltol, double abstol,
                           const gsl_odeiv2_step_type *step, double y[SYS_SIZE])
 {
   int i;
@@ -81,13 +82,14 @@ integrate_periodic_output(double tmax, dynamics_params *dp,
   }
 
   fprintf(stderr, "SIM:  Using periodic output driver due to long simulation\n"
-          "      time.  Configure the output time resolution with\n"
-          "      PERIODIC_POINTS_PER_SECOND (currently %d).\n",
-          PERIODIC_POINTS_PER_SECOND);
+          "      time.  Output will be logged at %d Hz (configure\n"
+          "      LOGS_PER_SECOND in ``sim.c'').  Control updates will be\n"
+          "      performed at %d Hz (configure CONTROLLER_HZ in ``sim.c'').\n",
+          LOGS_PER_SECOND, CONTROLLER_HZ);
 
   /* Step using GSL integrator */
-  for (i = 1; i <= tmax * PERIODIC_POINTS_PER_SECOND; i++) {
-    double ti = (double) i / PERIODIC_POINTS_PER_SECOND;
+  for (i = 1; i <= tmax * CONTROLLER_HZ; i++) {
+    double ti = (double) i / CONTROLLER_HZ;
     int status = gsl_odeiv2_driver_apply (d, &t, ti, y);
      
     if (status != GSL_SUCCESS) {
@@ -119,17 +121,19 @@ integrate_periodic_output(double tmax, dynamics_params *dp,
     }
     
     /* Run controller */
-    if ((status = run_controller(((double) i+1) / PERIODIC_POINTS_PER_SECOND,
-                                 &meas, &dp->act)) < 0) {
+    if ((status = run_controller(((double) i+1) / CONTROLLER_HZ,
+                                   &meas, &dp->act)) < 0) {
       fprintf(stderr, "SIM:  Error in controller computation; exiting.\n");
       return 1;
     }
 
     /* output to log file */
-    print_sim_log(t, y, dp, simlog);
-    print_ctrl_log(t, &dp->act, ctrllog);
+    if (i % (CONTROLLER_HZ / LOGS_PER_SECOND) == 0) {
+      print_sim_log(t, y, dp, simlog);
+      print_ctrl_log(t, &dp->act, ctrllog);
+    }
   }
-     
+
   gsl_odeiv2_driver_free(d);
   return 0;
 }
