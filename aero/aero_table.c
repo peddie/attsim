@@ -133,7 +133,7 @@ int open_table(const char *filename) {
 
 
 int get_aero_torque(xyz_t *torque, xyz_t *velocity_body, double atmosph_density) {
-  // torque: Output torque, newton meters
+  // torque: Output torque in body frame, newton meters
   // velocity_body: Spacecraft velocity relative to the atmosphere, in body frame, m/s
   // atmosph_density: kg/m^3
   //
