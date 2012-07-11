@@ -14,7 +14,7 @@ linear algebra
 
 Install GNUPlot to generate nice PDF plots
 
-    gnuplot-x11
+    sudo apt-get install gnuplot-x11
 
 Clone this repository
 
@@ -29,6 +29,22 @@ Clone and build Greg Horn's mathlib library for spatial rotations
 Build the simulator
 
     make
+
+Installation on OS X
+--------------------
+                
+Install standard OSX buildtools if necessary: https://github.com/kennethreitz/osx-gcc-installer/blob/master/README.rst
+Download and install a newer gcc from http://hpc.sourceforge.net/
+    export CC=/usr/local/bin/gcc
+
+Download GSL source: ftp://ftp.gnu.org/gnu/gsl/ and 
+    ./configure && make && sudo make install
+    
+    sudo port install gnuplot
+
+Now follow the instructions above starting with "Clone this repository".  When it comes time to build the simulator:
+
+    make -f Makefile.mac
 
 Run
 -----------
@@ -56,6 +72,8 @@ Features
 
 - Currently allows for feedback control via measurement gyros and
   magnetometer and using magnetic torquers
+
+- Basic aerodynamics model
 
 - Fast (approximately 7000-10000 times realtime)
 
