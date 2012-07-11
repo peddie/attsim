@@ -18,7 +18,7 @@ typedef struct {
 } aero_table_t;
 
 // attsim should just care about these two functions:
-int open_table(const char *filename);
+int open_aero_table(const char *filename);
 int get_aero_torque(xyz_t *torque, xyz_t *velocity_body, double atmosph_density);
 
 

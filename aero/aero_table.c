@@ -6,7 +6,7 @@
 
 #include "aero_table.h"
 
-aero_table_t *the_table;
+aero_table_t the_table;
 
 
 typedef struct {
@@ -125,10 +125,10 @@ int check_presence(aero_table_t *t, unsigned int check_a, unsigned int check_b, 
   return 1;
 }
 
-int open_table(const char *filename) {
+int open_aero_table(const char *filename) {
   if (!filename)
     filename = "aero/cubesat.table";
-  return load_aero_table(the_table, filename);
+  return load_aero_table(&the_table, filename);
 }
 
 
@@ -155,7 +155,7 @@ int get_aero_torque(xyz_t *torque, xyz_t *velocity_body, double atmosph_density)
 
   // Perform the table lookup
   aero_table_output_t out;
-  if (lookup_aero_table(&out, the_table, a, b, c))
+  if (lookup_aero_table(&out, &the_table, a, b, c))
     return 1; // lookup failed
 
   // Re-dimensionalize the results
