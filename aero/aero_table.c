@@ -36,20 +36,17 @@ int write_aero_table_entry(FILE *f, double a, double b, int c, aero_table_output
 int load_aero_table(aero_table_t *t, const char *filename) {
   FILE *f = fopen(filename, "rb");
   if (!f) {
-    fprintf(stderr, "Error opening %s\n",filename);
+    fprintf(stderr, "AERO: Error opening %s\n",filename);
     return 1;
   }
 
   aero_table_entry_t r[2];
 
   if (fread(r,sizeof(aero_table_entry_t),2,f) != 2) {
-    fprintf(stderr,"Error reading first 2 entries from %s\n",filename);
+    fprintf(stderr,"AERO: Error reading first 2 entries from %s\n",filename);
     return 1;
   }
   
-
-  printf("r[0].a,b = %.3f, %.2f\n",r[0].a,r[0].b);
-  printf("r[1].a,b = %.3f, %.2f\n",r[1].a,r[1].b);
 
 
   // Measure the interval between entries
@@ -59,18 +56,18 @@ int load_aero_table(aero_table_t *t, const char *filename) {
     t->step = r[1].a - r[0].a;
 
 
-  printf("Step size is %.3f\n",t->step);
+  printf("AERO: Step size is %.3f\n",t->step);
   
   // Calculate how many entries per row
   t->dim = (round(2/t->step)+1);
   
   size_t s = t->dim * t->dim * 2 * sizeof(aero_table_output_t);
 
-  printf("Dim is %u @ %zu bytes, about to allocate %.3f MB\n",t->dim, sizeof(aero_table_output_t), s/1E6);
+  printf("AERO: Dim is %u @ %zu bytes, about to allocate %.3f MB\n",t->dim, sizeof(aero_table_output_t), s/1E6);
   
   t->table = malloc(s);
   if (!t->table)
-    fprintf(stderr, "Unable to allocate %.3f MB for table\n",s/1E6);
+    fprintf(stderr, "AERO: Unable to allocate %.3f MB for table\n",s/1E6);
 
   memset(t->table, 0, s);
 
@@ -82,7 +79,7 @@ int load_aero_table(aero_table_t *t, const char *filename) {
     n++;
     
     if (r->a < -1 || r->a > 1 || r->b < -1 || r->b > 1 || r->c < 0 || r->c > 1) {
-      fprintf(stderr, "Rejecting invalid entry %u (%.3f, %.3f, %d)",n, r->a, r->b, r->c);
+      fprintf(stderr, "AERO: Rejecting invalid entry %u (%.3f, %.3f, %d)",n, r->a, r->b, r->c);
       continue;
     }
 
@@ -103,7 +100,7 @@ int load_aero_table(aero_table_t *t, const char *filename) {
 
   fclose(f);
 
-  printf("Read %u entries from %s.\n",n,filename);
+  printf("AERO: Read %u entries from %s.\n",n,filename);
 
   return 0;
 }
@@ -177,7 +174,7 @@ int lookup_aero_table(aero_table_output_t *out, aero_table_t *t, double a, doubl
   ib = b / t->step + (t->dim - 1)/2;
  
   if (c<0 || c > 1) {
-    fprintf(stderr,"lookup_aero_table called with bad c (%.3f, %.3f, %d)\n",a,b,c);
+    fprintf(stderr,"AERO: lookup_aero_table called with bad c (%.3f, %.3f, %d)\n",a,b,c);
     return 1;
   }
 
@@ -194,7 +191,7 @@ int lookup_aero_table(aero_table_output_t *out, aero_table_t *t, double a, doubl
     }
   
   if (n==0) {
-    fprintf(stderr,"lookup_aero_table couldn't find any neighbors for (%.3f, %.3f, %d): %f, %f. \n",a,b,c, ia, ib);
+    fprintf(stderr,"AERO: lookup_aero_table couldn't find any neighbors for (%.3f, %.3f, %d): %f, %f. \n",a,b,c, ia, ib);
     return 1;
   }
   
