@@ -146,9 +146,9 @@ int get_aero_torque(xyz_t *torque, xyz_t *velocity_body, double atmosph_density)
 
   // Compute lookup table parameters from velocity unit vector
   double a, b, c;
-  a = e_v.x;
-  b = e_v.y;
-  c = (e_v.z > 0);
+  a = e_v.y;
+  b = e_v.z;
+  c = (e_v.x > 0);
 
   // Perform the table lookup
   aero_table_output_t out;
