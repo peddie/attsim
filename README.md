@@ -35,9 +35,11 @@ Installation on OS X
                 
 Install standard OSX buildtools if necessary: https://github.com/kennethreitz/osx-gcc-installer/blob/master/README.rst
 Download and install a newer gcc from http://hpc.sourceforge.net/
+
     export CC=/usr/local/bin/gcc
 
 Download GSL source: ftp://ftp.gnu.org/gnu/gsl/ and 
+
     ./configure && make && sudo make install
     
     sudo port install gnuplot
