@@ -6,6 +6,9 @@
 
 #include "aero_table.h"
 
+aero_table_t *the_table;
+
+
 typedef struct {
   double a;
   double b;
@@ -30,7 +33,7 @@ int write_aero_table_entry(FILE *f, double a, double b, int c, aero_table_output
 
 #define INDEX(a,b,c,dim)((unsigned int)(a) + (unsigned int)(b) * (dim) + (unsigned int)(c) * (dim) * (dim))
 
-int load_aero_table(aero_table_t *t, char *filename) {
+int load_aero_table(aero_table_t *t, const char *filename) {
   FILE *f = fopen(filename, "rb");
   if (!f) {
     fprintf(stderr, "Error opening %s\n",filename);
@@ -121,6 +124,47 @@ int check_presence(aero_table_t *t, unsigned int check_a, unsigned int check_b, 
   if (r.x == 0 && r.y == 0 && r.z == 0) return 0;
   return 1;
 }
+
+int open_table(const char *filename) {
+  if (!filename)
+    filename = "aero/cubesat.table";
+  return load_aero_table(the_table, filename);
+}
+
+
+int get_aero_torque(xyz_t *torque, xyz_t *velocity_body, double atmosph_density) {
+  // torque: Output torque in body frame, newton meters
+  // velocity_body: Spacecraft velocity relative to the atmosphere, in body frame, m/s
+  // atmosph_density: kg/m^3
+  //
+  // Other consistent unit systems ok
+  
+  // Find dynamic pressure
+  double q;
+  q = 0.5 * atmosph_density * xyz_norm_squared(velocity_body);
+  
+  // Velocity unit vector
+  xyz_t e_v;
+  xyz_normalize(&e_v, velocity_body);
+
+  // Compute lookup table parameters from velocity unit vector
+  double a, b, c;
+  a = e_v.x;
+  b = e_v.y;
+  c = (e_v.z > 0);
+
+  // Perform the table lookup
+  aero_table_output_t out;
+  if (lookup_aero_table(&out, the_table, a, b, c))
+    return 1; // lookup failed
+
+  // Re-dimensionalize the results
+  xyz_scale(torque, q, &out.torque);
+  
+  return 0;
+}
+
+
 
 
 int lookup_aero_table(aero_table_output_t *out, aero_table_t *t, double a, double b, int c) {

@@ -15,7 +15,7 @@
 
 #define UU __attribute__((unused))
 
-#define MEGARES 0.1
+#define MEGARES 0.3
 #define DRAW
 
 struct indirect_element {
