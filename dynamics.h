@@ -20,6 +20,9 @@
 /* Callback type to compute magnetic field */
 typedef int(*mag_lvlh_f)(double, xyz_t *);
 
+/* Callback type to compute aero parameters */
+typedef double(*aero_f)(double);
+
 typedef struct actuators {
   xyz_t mag_coil;
 } actuators;
@@ -29,6 +32,7 @@ typedef struct dynamics_params {
   double I_b_inv[9];
   actuators act;
   mag_lvlh_f compute_mag;
+  aero_f compute_aero;
 } dynamics_params;
 
 typedef struct full_state {

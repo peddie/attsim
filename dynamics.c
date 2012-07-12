@@ -14,6 +14,7 @@
 #include <spatial_rotations.h>
 
 #include "dynamics.h"
+#include "aero/aero_table.h"
 
 
 /* State: (q_i2b L_bi_i W P) */
@@ -93,6 +94,13 @@ compute_torques(const full_state *state,
   xyz_cross(&mag_torque, &mag_b, &p->act.mag_coil);
 
   xyz_sum(torque_b, &mag_torque, torque_b);
+
+  /* Aerodynamic torques */
+  xyz_t v_b, aero_torque_b;
+  const xyz_t v_lvlh = {0, 7700, 0};
+  rot_vec_by_quat_a2b(&v_b, &state->q_i2b, &v_lvlh);
+  get_aero_torque(&aero_torque_b, &v_b, p->compute_aero(state->t));
+  xyz_sum(torque_b, &aero_torque_b, torque_b);
   
   return 0;                             /* computation went OK */
 }
@@ -171,11 +179,21 @@ compute_mag_lvlh(double t __attribute__((unused)),
   return 0;
 }
 
+static double
+compute_rho_lvlh(double t __attribute__((unused)))
+{
+  return 1e-11;
+}
+
 int
 dynamics_init(double y0[], dynamics_params *dp)
 {
   /* magnetometer */
   dp->compute_mag = &compute_mag_lvlh;
+  dp->compute_aero = &compute_rho_lvlh;
+
+  /* Load aerodynamics table, using default of "cubesat.table" */
+  open_aero_table(NULL);
   
   /* Pre-compute inverse of body-frame inertia tensor */
   double J[9] = {1, 0, 0,

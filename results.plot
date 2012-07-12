@@ -104,6 +104,16 @@ plot "controller.log" u 1:2 w lines t "B_x", \
      "controller.log" u 1:3 w lines t "B_y", \
      "controller.log" u 1:4 w lines t "B_z"
 
+set output "aero.pdf"
+
+set title "Aerodynamic torques in body frame vs. time" font "Gill Sans,9"
+set ylabel "Torque (uN)" font "Gill Sans,9"
+set xlabel "Time (s)" font "Gill Sans,9"
+
+plot "sim.log" u 1:20 w lines t "A_x", \
+     "sim.log" u 1:21 w lines t "A_y", \
+     "sim.log" u 1:22 w lines t "A_z"
+
 # set multiplot
 # set size 1,0.45
 # set origin 0,0.5
