@@ -14,6 +14,7 @@
 #include <spatial_rotations.h>
 
 #include "dynamics.h"
+#include "aero/aero_table.h"
 #include "sensors.h"
 #include "controller.h"
 
@@ -51,6 +52,13 @@ print_sim_log(const double t, const double y[],
   fprintf(out, "%.8e %.8e\t", xyz_norm(&L_bi_b), y[8]);
   fprintf(out, "%.8e %.8e %.8e\t", L_bi_b.x, L_bi_b.y, L_bi_b.z);
 
+  /* Output aero torques in body-frame */
+  xyz_t v_b, aero_torque_b;
+  const xyz_t v_lvlh = {0, 7700, 0};
+  rot_vec_by_quat_a2b(&v_b, &s.q_i2b, &v_lvlh);
+  get_aero_torque(&aero_torque_b, &v_b, dp->compute_aero(t));
+  fprintf(out, "%.8e %.8e %.8e\t",
+          aero_torque_b.x, aero_torque_b.y, aero_torque_b.z);
   fprintf(out, "\n");
 }
 
