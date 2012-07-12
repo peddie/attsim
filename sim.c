@@ -208,6 +208,7 @@ main(int argc, char **argv)
     tmax = atof(argv[1]);
 
   /* set up dynamics */
+  printf("SIM:  Initializing attitude dynamics.\n");
   if ((status = dynamics_init(y, &dp)) < 0) {
     fprintf(stderr, __FILE__ ":%d: ERROR: Couldn't set up initial conditions"
             " for dynamics simulation!\n", __LINE__);
@@ -215,6 +216,7 @@ main(int argc, char **argv)
   }
 
   /* set up controller */
+  printf("SIM:  Initializing attitude controller.\n");
   if ((status = controller_init()) < 0) {
     fprintf(stderr, __FILE__":%d: ERROR: Couldn't initialize controller!\n",
             __LINE__);
